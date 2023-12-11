@@ -118,7 +118,7 @@ def main():
     NUM_PERSONAS = st.sidebar.number_input("Number of personas", value=4, step=1)
     NUM_ROUNDS = st.sidebar.number_input("Number of debate rounds", value=1, step=1)
     TEMPERATURE = st.sidebar.number_input("Temperature (for GPT)", value=0.7, step=0.1)
-    MODEL_NAME = st.sidebar.selectbox("GPT Model:", ['gpt-4', 'gpt-3.5-turbo'])
+    MODEL_NAME = st.sidebar.selectbox("GPT Model:", ['gpt-3.5-turbo', 'gpt-4'])
     status_message.text("Waiting for topic...")
     topic = st.text_input("Enter a debate topic: ")
 
