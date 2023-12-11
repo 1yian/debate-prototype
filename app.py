@@ -28,7 +28,7 @@ def call_openai(prompt, temperature=0.7):
          "content": prompt}
     ]
     response = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",
+        model=MODEL_NAME,
         messages=pa_prompt,
         temperature=temperature,
     )
@@ -110,7 +110,7 @@ def main():
     st.title("Roundtable Debate Simulation")
 
     # Allow users to modify parameters
-    global OPENAI_KEY, PERSONA_GEN_PROMPT, START_DEBATE_PROMPT, DEBATE_PROMPT, SHORTEN_AFTER, NUM_ROUNDS, TEMPERATURE, NUM_PERSONAS
+    global OPENAI_KEY, PERSONA_GEN_PROMPT, START_DEBATE_PROMPT, DEBATE_PROMPT, SHORTEN_AFTER, NUM_ROUNDS, TEMPERATURE, NUM_PERSONAS, MODEL_NAME
     PERSONA_GEN_PROMPT = st.sidebar.text_area("Persona Generation Prompt \n(Use [TOPIC], [NUM_PERSONAS] in your prompt)", PERSONA_GEN_PROMPT)
     START_DEBATE_PROMPT = st.sidebar.text_area("Start Debate Prompt \n(Use [TOPIC], [NAME], [DESC] in your prompt)", START_DEBATE_PROMPT)
     DEBATE_PROMPT = st.sidebar.text_area("Debate Prompt \n(Use [TOPIC], [NAME], [DESC], [HISTORY] in your prompt)", DEBATE_PROMPT)
@@ -118,6 +118,7 @@ def main():
     NUM_PERSONAS = st.sidebar.number_input("Number of personas", value=4, step=1)
     NUM_ROUNDS = st.sidebar.number_input("Number of debate rounds", value=1, step=1)
     TEMPERATURE = st.sidebar.number_input("Temperature (for GPT)", value=0.7, step=0.1)
+    MODEL_NAME = st.sidebar.selectbox("GPT Model:", ['gpt-4', 'gpt-3.5-turbo'])
     status_message.text("Waiting for topic...")
     topic = st.text_input("Enter a debate topic: ")
 
