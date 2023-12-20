@@ -2,10 +2,14 @@ import openai
 import json
 from summarizer.sbert import SBertSummarizer
 import os
+
+import google.generativeai as genai
 OPENAI_KEY = os.environ.get('OPENAI_KEY')
+GOOGLE_KEY = os.environ.get('GOOGLE_KEY')
+genai.configure(api_key=GOOGLE_KEY)
 PERSONA_GEN_PROMPT = (
         f"Given the topic [TOPIC], create a roundtable debate of different personas "
-        f"to expertly show key perspectives on the issue. Output the personas as a list "
+        f"to show key perspectives on the issue. Output the personas as a list "
         f"of JSON objects. Each JSON object should have the following structure: "
         f"{{'name': 'Name of the Persona',"
         f"'description': 'Brief Description of the Persona'}}. Ensure that the output is "
@@ -34,6 +38,13 @@ def call_openai(prompt, temperature=0.7):
     )
     return response.choices[0].message['content'].strip()
 
+def call_google(prompt, temperature=0.7):
+    model = genai.GenerativeModel('gemini-pro',
+        generation_config=genai.types.GenerationConfig(
+        temperature=temperature)
+    )
+    return model.generate_content(prompt).text
+
 # Step 1: User Input for Debate Topic
 def get_debate_topic():
     return input("Enter a debate topic: ")
@@ -56,7 +67,8 @@ def extract_json_from_response(response):
 def generate_personas(topic):
     prompt = PERSONA_GEN_PROMPT
     prompt = prompt.replace("[TOPIC]", topic).replace("[NUM_PERSONAS]", str(int(NUM_PERSONAS)))
-    response = call_openai(prompt, TEMPERATURE)
+
+    response = get_response(prompt, TEMPERATURE)
     return extract_json_from_response(response)
 
 
@@ -92,7 +104,7 @@ def simulate_debate(topic, personas, rounds=3):
             prompt = START_DEBATE_PROMPT if len(debate_history) == 0 else DEBATE_PROMPT
             str_debate = str(check_shorten(debate_history))
             prompt = prompt.replace("[TOPIC]", topic).replace("[NAME]", persona['name']).replace("[DESC]", persona['description']).replace("[HISTORY]", str_debate)
-            response = call_openai(prompt, TEMPERATURE)
+            response = get_response(prompt, TEMPERATURE)
 
             # Streamlit chat message
             with st.chat_message(persona['name']):
@@ -110,15 +122,18 @@ def main():
     st.title("Roundtable Debate Simulation")
 
     # Allow users to modify parameters
-    global OPENAI_KEY, PERSONA_GEN_PROMPT, START_DEBATE_PROMPT, DEBATE_PROMPT, SHORTEN_AFTER, NUM_ROUNDS, TEMPERATURE, NUM_PERSONAS, MODEL_NAME
+    global PERSONA_GEN_PROMPT, START_DEBATE_PROMPT, DEBATE_PROMPT, SHORTEN_AFTER, NUM_ROUNDS, TEMPERATURE, NUM_PERSONAS, MODEL_NAME
     PERSONA_GEN_PROMPT = st.sidebar.text_area("Persona Generation Prompt \n(Use [TOPIC], [NUM_PERSONAS] in your prompt)", PERSONA_GEN_PROMPT)
     START_DEBATE_PROMPT = st.sidebar.text_area("Start Debate Prompt \n(Use [TOPIC], [NAME], [DESC] in your prompt)", START_DEBATE_PROMPT)
     DEBATE_PROMPT = st.sidebar.text_area("Debate Prompt \n(Use [TOPIC], [NAME], [DESC], [HISTORY] in your prompt)", DEBATE_PROMPT)
     SHORTEN_AFTER = st.sidebar.number_input("Shorten after (Max word length of debate transcript before we summarize)", value=SHORTEN_AFTER, step=100)
     NUM_PERSONAS = st.sidebar.number_input("Number of personas", value=4, step=1)
-    NUM_ROUNDS = st.sidebar.number_input("Number of debate rounds", value=1, step=1)
+    NUM_ROUNDS = st.sidebar.number_input("Number of debate rounds", value=2, step=1)
     TEMPERATURE = st.sidebar.number_input("Temperature (for GPT)", value=0.7, step=0.1)
-    MODEL_NAME = st.sidebar.selectbox("GPT Model:", ['gpt-3.5-turbo', 'gpt-4'])
+    MODEL_NAME = st.sidebar.selectbox("Model:", ['gemini-pro', 'gpt-3.5-turbo', 'gpt-4'])
+
+    global get_response
+    get_response = call_openai if 'gpt' in MODEL_NAME else call_google
     status_message.text("Waiting for topic...")
     topic = st.text_input("Enter a debate topic: ")
 
