@@ -114,7 +114,6 @@ if __name__ == '__main__':
     reset = st.button('Reset')
     status_message = st.sidebar.empty()
     draw_sidebar(cfg)
-    status_message.text('Waiting for topic...')
 
     # Reset the experiment
     if reset:
@@ -133,22 +132,33 @@ if __name__ == '__main__':
 
     if topic:
         with top_container:
-            if not 'personas' in st.session_state:
+            if not 'generated_personas' in st.session_state:
                 with st.spinner('Generating personas...'):
                     personas = llm.generate_personas(topic, cfg)
-                    st.session_state['personas'] = personas
+                    st.session_state['generated_personas'] = personas
 
 
-            if cfg['ux_params']['show_persona_desc'] and 'personas' in st.session_state:
+            if cfg['ux_params']['show_persona_desc'] and 'generated_personas' in st.session_state:
+
                 with persona_tab:
-                    draw_personas(st.session_state.personas, persona_tab)
+                    draw_personas(st.session_state.generated_personas, persona_tab)
+                picked_personas = st.multiselect(
+                    'Pick personas to include in debate (in order):',
+                    [persona['name'] for persona in st.session_state.generated_personas],
+                )
+                st.session_state.picked_personas = []
+                for persona in picked_personas:
+                    for tmp_persona in st.session_state.generated_personas:
+                        if tmp_persona['name'] == persona:
+                            st.session_state.picked_personas.append(tmp_persona)
+                            break
             start = st.button('Start debate...')
             stop = st.button('Stop debate...')
 
             if stop:
                 st.stop()
 
-            if start and 'personas' in st.session_state:
+            if start and 'picked_personas' in st.session_state:
                 with st.spinner('Debate in progress...'):
                     with debate_tab:
-                        llm.simulate_debate(topic, st.session_state.personas, cfg)
+                        llm.simulate_debate(topic, st.session_state.picked_personas, cfg)
