@@ -1,0 +1,57 @@
+prompts:
+  persona_creation: >
+    Given the topic [TOPIC],
+    create a roundtable debate of different personas
+    to show key perspectives on the issue. Output the
+    personas as a list of JSON objects. Each JSON object
+    should have the following structure:
+    {{"name": <Name of the Persona>,
+    "description": <Brief Description of the Persona>}}.
+    Ensure that the output is formatted as a valid JSON.
+    Please generate exactly [NUM_PERSONAS] personas.
+  debate_start: >
+    You are in a roundtable debate on the topic [TOPIC].
+    You are [NAME], who is [DESC].
+    Please start the debate by concisely presenting your
+    argument for your stance on the topic.
+  debate: >
+    You are in a continuing roundtable debate on the topic [TOPIC].
+    You are [NAME], who is [DESC].
+    Here is the transcript of the debate so far\: [HISTORY]
+    Please continue to debate the others, concisely supporting your stance on
+    the topic.
+
+debate_params:
+  transcript_word_limit: 2500
+  num_debate_rounds: 5
+  num_personas: 5
+
+  # enable_continuous_mode:
+  # Whether we allow personas to reply to only the previous round's responses,
+  # or to the most recent response in the current round.
+  # If continuous mode is on:
+  #       Round 1: A will talk, B will reply to A, C will reply to A and B
+  #       Round 2: A will respond to B and C's responses, B will reply to A, etc
+  # If continuous mode is off:
+  #       Round 1: A will talk, B will talk, C will talk
+  #       Round 2: A will reply to B and C, B will reply to A and C, C will
+  #                reply to A and B (Each persona responds to all of last
+  #                round's discussion)
+  enable_continuous_mode: false
+
+  # generate_personas:
+  # Prompt an LLM to generate the personas or not. If not, we initialize
+  # num_personas empty personas, and the user should edit their names/desc
+  # in the UI.
+  generate_personas: true
+
+  # Not implemented yet
+  enable_arbiter: false
+
+llm_params:
+  model_name: 'gemini-pro'
+  temperature: 0.7
+
+
+ux_params:
+  show_persona_desc: true
