@@ -4,3 +4,4 @@ bert-extractive-summarizer
 torch
 sentence-transformers
 google-generativeai
+pyyaml

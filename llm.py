@@ -69,17 +69,13 @@ def extract_json_from_response(response):
     except json.JSONDecodeError as e:
         raise ValueError(f"Failed to parse JSON: {e}")
 
-def generate_personas(topic, cfg):
-    num_personas = int(cfg['debate_params']['num_personas'])
-
-    # If we don't need to generate, return a blank skeleton dict.
-    if not cfg['debate_params']['generate_personas']:
-        return [{'name': '', 'description': ''} for _ in range(num_personas)]
+def generate_personas(topic, num_personas, cfg):
 
     # Otherwise generate it.
     prompt = cfg['prompts']['persona_creation']
     prompt = prompt.replace("[TOPIC]", topic)
     prompt = prompt.replace("[NUM_PERSONAS]", str(num_personas))
+
 
     response = call_llm(
                 prompt,
@@ -95,7 +91,7 @@ def check_shorten(debate_history, shorten_after):
     num_words = len(str(debate_history).split())
     if num_words > shorten_after:
         print("SHORTENING...")
-        ratio = (SHORTEN_AFTER - 100) / num_words
+        ratio = (shorten_after - 100) / num_words
         new_debate_history = []
         for line in debate_history:
             line = line.copy()
@@ -126,6 +122,14 @@ def simulate_debate(topic, personas, cfg):
                     prompt = prompt.replace("[HISTORY]", str_debate)
 
             prompt = prompt.replace("[TOPIC]", topic).replace("[NAME]", persona['name']).replace("[DESC]", persona['description'])
+
+            if cfg['debate_params']['limit_response_length']:
+                limiter = cfg['prompts']['response_length'].replace('[RESPONSE_LENGTH]',
+                                                                    cfg['debate_params']['response_length'])
+                prompt = prompt.replace("[LIMITER]", limiter)
+            else:
+                prompt = prompt.replace("[LIMITER]", "")
+
             response = call_llm(prompt, cfg['llm_params']['model_name'], temperature=cfg['llm_params']['temperature'])
 
             # Streamlit chat message

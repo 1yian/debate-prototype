@@ -10,21 +10,28 @@ prompts:
     Ensure that the output is formatted as a valid JSON.
     Please generate exactly [NUM_PERSONAS] personas.
   debate_start: >
-    You are in a roundtable debate on the topic [TOPIC].
-    You are [NAME], who is [DESC].
+    You are in an roundtable debate on the topic [TOPIC].
+    You are [NAME], who is [DESC]. 
     Please start the debate by concisely presenting your
-    argument for your stance on the topic.
+    argument for your stance on the topic. [LIMITER] Do not reveal your name in your response!
   debate: >
     You are in a continuing roundtable debate on the topic [TOPIC].
-    You are [NAME], who is [DESC].
+    You are [NAME], who is [DESC]. 
     Here is the transcript of the debate so far\: [HISTORY]
     Please continue to debate the others, concisely supporting your stance on
-    the topic.
+    the topic. [LIMITER] Do not reveal your name in your response!
+  response_length: >
+    Please limit your response to [RESPONSE_LENGTH].
+  
 
 debate_params:
   transcript_word_limit: 2500
   num_debate_rounds: 5
   num_personas: 5
+  limit_response_length: false
+
+  # string indicating to the LLM how long the response should be.
+  response_length: '5 sentences'
 
   # enable_continuous_mode:
   # Whether we allow personas to reply to only the previous round's responses,
