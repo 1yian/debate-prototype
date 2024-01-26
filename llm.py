@@ -7,6 +7,8 @@ import streamlit as st
 
 from summarizer.sbert import SBertSummarizer
 
+from rag import cohere_rag_pipeline
+
 SUPPORTED_MODELS = ['gemini-pro', 'gpt-3.5-turbo', 'gpt-4']
 openai.api_key = os.environ.get('OPENAI_API_KEY')
 google_genai.configure(api_key=os.environ.get('GOOGLE_API_KEY'))
@@ -132,12 +134,15 @@ def simulate_debate(topic, personas, cfg):
 
             response = call_llm(prompt, cfg['llm_params']['model_name'], temperature=cfg['llm_params']['temperature'])
 
+            #Rewrite argument with RAG
+            response_mod = cohere_rag_pipeline(response)
+
             # Streamlit chat message
             display_name = persona['name'] if cfg['ux_params']['show_persona_desc'] else f"Persona {p_idx}"
             with st.chat_message(str(p_idx)):
-                st.write(f"{display_name}:\n", response)
+                st.write(f"{display_name}:\n", response_mod)
 
-            debate_history.append({"persona": display_name, "argument": response})
+            debate_history.append({"persona": display_name, "argument": response_mod})
         if not cont_mode:
             prev_round_debate_history = debate_history.copy()
             shortened_prev_round_debate_history = check_shorten(prev_round_debate_history, cfg['debate_params']['transcript_word_limit'])
