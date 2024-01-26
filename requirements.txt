@@ -5,3 +5,8 @@ torch
 sentence-transformers
 google-generativeai
 pyyaml
+cohere 
+hnswlib 
+unstructured
+langchain
+langchain_openai
