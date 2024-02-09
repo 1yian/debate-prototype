@@ -133,8 +133,11 @@ def main():
                 st.rerun()
         st.divider()
 
-        st.session_state['current_debate_round'] = 0
+
         next_round_button = st.button("Start Next Round Debate")
+    if 'current_debate_round' not in st.session_state:
+
+        st.session_state['current_debate_round'] = -1
     if next_round_button:
         if len(st.session_state['participating_agents']) == 0:
             st.error("Error: No agents selected!")
@@ -147,12 +150,14 @@ def main():
                 if len(agent.desc) == 0:
                     st.warning(f"Warning: {agent.title} does not have a description!")
             st.success("Starting debate!")
-
+            st.session_state['current_debate_round'] = st.session_state['current_debate_round'] + 1
             rounds = [f"Round {i}" for i in range(cfg['debate_params']['num_debate_rounds'])]
             round_tabs = st.tabs(rounds)
             with round_tabs[st.session_state['current_debate_round']]:
-                st.session_state['debate_history'] = llm.debate_round(topic, st.session_state['participating_agents'], cfg)
-            st.session_state['current_debate_round'] = st.session_state['current_debate_round'] + 1
+                sorted_participating_agents = sorted(st.session_state['participating_agents'],
+                                                     key=lambda obj: st.session_state['agents'].index(obj))
+                st.session_state['debate_history'] = llm.debate_round(topic, sorted_participating_agents, cfg)
+
 
 if __name__ == '__main__':
     main()
