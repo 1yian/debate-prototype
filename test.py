@@ -2,18 +2,32 @@ import streamlit as st
 from streamlit_option_menu import option_menu
 
 import streamlit as st
+from collections import namedtuple
+
+# Step 2: Define the namedtuple with specified keys
+Agent = namedtuple('Agent', ['title', 'description', 'emoji'])
 
 # Set up the page configuration
 st.set_page_config(layout="wide")
-
+title = st.empty()
 # Main header in the main page
-st.title("Can alternative energy effectively replace fossil fuels?")
+topic = st.text_input("topic", placeholder="Can alternative energy effectively replace fossil fuels?", label_visibility='hidden')
+if topic:
+    with title:
+        st.title(topic)
+else:
+    with title:
+        st.title("Hello! What topic would you like to learn more about today?")
+        exit()
+
 
 # Define the default descriptions for each agent
-default_agents = [
-    ("Environmentalist", "A staunch supporter of renewable energy and sustainable practices."),
-    ("Economic Transition Analyst", "An economic analyst considering the impacts of energy transitions."),
-    ("Coal Industry Defender", "A spokesperson for the coal industry who believes coal is irreplaceable in the energy sector."),
+agent_dict = [
+    Agent("Environmentalist", "A staunch supporter of renewable energy and sustainable practices.", "🌱"),
+Agent("Environmentalist", "A staunch supporter of renewable energy and sustainable practices.", "🌱"),
+Agent("Environmentalist", "A staunch supporter of renewable energy and sustainable practices.", "🌱"),
+    Agent("Economic Transition Analyst", "An economic analyst considering the impacts of energy transitions.", "💵"),
+    Agent("Coal Industry Defender", "A spokesperson for the coal industry who believes coal is irreplaceable in the energy sector.", "⛏️"),
 ]
 st.markdown("""
 <style>
@@ -26,7 +40,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 # Initialize the session state for agent participation if it does not exist
-for i, _ in enumerate(default_agents):
+for i, _ in enumerate(agent_dict):
     if f'participate_{i}' not in st.session_state:
         st.session_state[f'participate_{i}'] = False  # Default to True if you want all agents to participate initially
 
@@ -34,7 +48,7 @@ participating_agents = []
 # Sidebar for agents' selection with fixed personas and editable descriptions
 with st.sidebar:
     st.header("Agents in Debate", help="This is a debate :D", divider='gray')
-    for i, (agent_name, agent_desc) in enumerate(default_agents):
+    for i, (agent_name, agent_desc, _) in enumerate(agent_dict):
 
         title_placeholder = st.empty()
         ##st.markdown(f"**{agent_name}**")  # You can use st.markdown for styling
@@ -78,7 +92,7 @@ with st.sidebar:
         else:
             for agent_idx in participating_agents:
                 if len(st.session_state[f'description_{agent_idx}']) == 0:
-                    st.warning(f"Warning: {default_agents[agent_idx][0]} does not have a description!")
+                    st.warning(f"Warning: {agent_dict[agent_idx][0]} does not have a description!")
                     break
             st.success("Starting debate!")
 

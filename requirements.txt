@@ -8,5 +8,3 @@ pyyaml
 cohere 
 hnswlib 
 unstructured
-langchain
-langchain_openai

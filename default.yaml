@@ -5,8 +5,9 @@ prompts:
     to show key perspectives on the issue. Output the
     personas as a list of JSON objects. Each JSON object
     should have the following structure:
-    {{"name": <Name of the Persona>,
-    "description": <Brief Description of the Persona>}}.
+    {{"title": <title of the Persona>,
+    "description": <Brief Description of the Persona>,
+    "emoji": <Single emoji representation of the perspective the persona represents>}}.
     Ensure that the output is formatted as a valid JSON.
     Please generate exactly [NUM_PERSONAS] personas.
   debate_start: >
@@ -56,7 +57,7 @@ debate_params:
   enable_arbiter: false
 
 llm_params:
-  model_name: 'gemini-pro'
+  model_name: 'gpt-4'
   temperature: 0.7
 
 

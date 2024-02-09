@@ -1,201 +1,158 @@
 import streamlit as st
 import yaml
+from streamlit_option_menu import option_menu
 
-from llm import call_llm, SUPPORTED_MODELS
 import llm
 
 DEFAULT_CFG_PATH = './default.yaml'
 
 
-def draw_sidebar(cfg):
-    cfg['ux_params']['show_persona_desc'] = \
-        st.sidebar.toggle(
-            "Show personas",
-            cfg['ux_params']['show_persona_desc']
-        )
-
-    with st.sidebar.expander('Prompts:'):
-        cfg['prompts']['persona_creation'] = \
-            st.text_area(
-                'Persona Generation Prompt '
-                '(Use [TOPIC], [NUM_PERSONAS] in the prompt)',
-                cfg['prompts']['persona_creation'],
-            )
-
-        cfg['prompts']['debate_start'] = \
-            st.text_area(
-                'Starting Round Debate Prompt '
-                '(Use [TOPIC], [NAME], [DESC], [LIMITER] in the prompt)',
-                cfg['prompts']['debate_start'],
-            )
-
-        cfg['prompts']['debate'] = \
-            st.text_area(
-                'Regular Debate Prompt'
-                '(Use [TOPIC], [NAME], [DESC], [HISTORY], [LIMITER] in the prompt)',
-                cfg['prompts']['debate'],
-            )
-
-        cfg['prompts']['response_length'] = \
-            st.text_input(
-                "Response 'limiter' Prompt (use [RESPONSE_LENGTH] in the prompt)",
-                cfg['prompts']['response_length']
-            )
-    with st.sidebar.expander('Debate Settings', expanded=True):
-        cfg['debate_params']['response_length'] = \
-            st.text_input(
-                "Desired Response Length from Debaters (eg. '5 sentences')",
-                placeholder='Not set',
-                value=cfg['debate_params']['response_length']
-            )
-
-        cfg['debate_params']['limit_response_length'] = cfg['debate_params']['response_length'] is not None
-
-        # TODO Come up with a better name than 'continuous mode'
-        cfg['debate_params']['enable_continuous_mode'] = \
-            st.toggle(
-                'Continuous Mode',
-                cfg['debate_params']['enable_continuous_mode']
-            )
-
-        cfg['debate_params']['transcript_word_limit'] = \
-            st.number_input(
-                'Transcript summarization threshold (words)',
-                value=cfg['debate_params']['transcript_word_limit'],
-                step=100,
-                min_value=100,
-                max_value=512_000,
-            )
-
-        cfg['debate_params']['num_debate_rounds'] = \
-            st.number_input(
-                'Number of debate_rounds',
-                value=cfg['debate_params']['num_debate_rounds'],
-                step=1,
-                min_value=1,
-                max_value=50
-            )
-
-    with st.sidebar.expander('LLM Params (limited for now):'):
-        cfg['llm_params']['model_name'] = \
-            st.selectbox('Model', SUPPORTED_MODELS)
-
-        cfg['llm_params']['temperature'] = \
-            st.number_input(
-                'Temperature',
-                value=cfg['llm_params']['temperature'],
-                step=0.1,
-                min_value=0.0,
-                max_value=2.0,
-            )
+def move_element(lst, index, direction):
+    if direction == 'right' and index < len(lst) - 1:
+        lst[index], lst[index + 1] = lst[index + 1], lst[index]
+    elif direction == 'left' and index > 0:
+        lst[index], lst[index - 1] = lst[index - 1], lst[index]
+    return lst
 
 
-def draw_personas(personas):
-    for i, persona in enumerate(personas):
-        persona['name'] = st.text_input(
-            f"Persona {i}",
-            value=persona['name'],
-            placeholder="Enter persona name here. For example, 'Dr. John Smith' or 'Doctor'",
-            key=f"persona_{i}_name"
-        )
-        persona['description'] = st.text_area(
-            label='',
-            value=persona['description'],
-            placeholder="Optional. Enter persona description here. For example, 'Believes that vaccines cause autism.'",
-            key=f"persona_{i}_description",
-            label_visibility="collapsed"
-        )
-
-
-def add_persona():
-    # Add a new, empty persona
-    st.session_state.generated_personas.append({'name': '', 'description': ''})
-    print(len(st.session_state.generated_personas))
-
-
-def remove_persona():
-    # Remove the last persona if more than one exists
-    if len(st.session_state.generated_personas) > 1:
-        st.session_state.generated_personas.pop()
-
-
-if __name__ == '__main__':
-    # Load the default config from default.yaml
+def main():
+    # Pre-Configuration
+    st.set_page_config(layout="wide")
+    # Some unfortunate CSS that's needed for alignment
+    st.markdown("""
+        <style>
+            /* Targets the outer container  */
+            .row-widget.stCheckbox {
+                margin-top: 10px;  /* Adjust this margin value */
+            }
+            .row-widget.stButton {
+                margin-top: 3px;
+            }
+        </style>
+    """, unsafe_allow_html=True)
     with open(DEFAULT_CFG_PATH, 'r') as tmp_fd:
         cfg = yaml.safe_load(tmp_fd)
 
-    # Define the initial layout of the website
-    st.title('Debate Simulation')
-    reset = st.button('Reset')
-    status_message = st.sidebar.empty()
-    draw_sidebar(cfg)
+    # First page user sees - deciding which topic to chose
+    title = st.empty()
+    topic = st.text_input("topic", placeholder="Can alternative energy effectively replace fossil fuels?",
+                          label_visibility='hidden')
 
-    # Reset the experiment
-    if reset:
-        for key in st.session_state.keys():
-            del st.session_state[key]
+    # Set the title based on whether the user has input something or not
+    with title:
+        if topic:
+            st.title(topic)
+        else:
+            st.title("Hello! What topic would you like to learn more about today?")
+            return
+    num_personas_start = cfg['debate_params']['num_personas']
 
-    # Get a topic from the user.
-    topic = st.text_input("Topic", placeholder='Enter a debate topic: ')
+    # Set up agents, make some blank personas for now...
+    if 'agents' not in st.session_state:
+        st.session_state['agents'] = [llm.Agent('', '', '') for _ in range(num_personas_start)]
 
-    top_container = st.container()
+    # List of indices from generated_agents of the Agents in the debate
+    if 'participating_agents' not in st.session_state:
+        st.session_state['participating_agents'] = []
 
-    # Define two tabs- personas and debate
-    # TODO Remove the tab if we aren't showing personas
-    persona_tab, debate_tab = st.tabs(["Personas", "Debate"])
+    next_round_button = None
 
-    with top_container:
-        if 'generated_personas' not in st.session_state:
-            st.session_state.generated_personas = [{'name': '', 'description': ''} for _ in range(2)]
+    with st.sidebar:
+        st.title("Agents in Debate", help="This is a debate :D")
+        st.divider()
+        for i, agent in enumerate(st.session_state.agents):
+            agent_title, agent_desc = agent.title, agent.desc
+            with st.container():
+                agent_title_placeholder = st.empty()
+                col1, col2, col3, col4, col5 = st.columns([0.2, 3, 0.5, 0.5, 0.5], gap="small")
+                potential_next_round_button = st.empty()
+                # Checkbox to the left of the expander, indicating participation
+                with col1:
+                    participate = st.checkbox(f'agent_{i}_checkbox', key=f'agent_{i}_checkbox', label_visibility='collapsed')
+                    if participate:
+                        if agent not in st.session_state['participating_agents']:
+                            st.session_state['participating_agents'].append(agent)
 
-        with persona_tab:
-            # Draw the add and remove buttons
-            # Create two columns for the buttons
-            col1, col2, col3 = st.columns(3)
+                        sorted_participating_agents = sorted(st.session_state['participating_agents'],
+                                                             key=lambda obj: st.session_state['agents'].index(obj))
+                        idx = sorted_participating_agents.index(agent)
+                        with agent_title_placeholder:
+                            st.write(f"Agent {idx + 1}")
+                    else:
+                        if agent in st.session_state['participating_agents']:
+                            st.session_state['participating_agents'].remove(agent)
 
-            # Place the add button in the first column
-            with col1:
-                st.button("Add Persona", on_click=add_persona)
+                with col2:
+                    with st.expander(agent_title.title(), agent._recently_expanded):
+                        # Text area for editing description, shown only when the expander is open
+                        new_title = st.text_input(f"title_{i}",label_visibility='hidden', value=agent.title, placeholder="Title")
+                        new_description = st.text_area(f"Description_{i}",
+                                                       label_visibility='hidden', value=agent.desc, placeholder="Description")
 
-            # Place the remove button in the second column
-            with col2:
-                st.button("Remove Persona", on_click=remove_persona)
+                        if agent.desc != new_description:
+                            agent.desc = new_description
+                            agent._recently_expanded = True
+                        elif agent.title != new_title:
+                            agent.title = new_title
+                            agent._recently_expanded = True
+                            st.rerun()
+                        else:
+                            agent._recently_expanded = False
 
-            with col3:
-                if topic:
-                    gen = st.button("Generate Personas Instead")
-                    if gen:
-                        st.session_state.generated_personas = llm.generate_personas(topic,
-                                                                                    len(st.session_state.generated_personas),
-                                                                                    cfg)
+                with col3:
+                    if st.button("⬆️", key=f'up_{i}'):
+                        lst = st.session_state['agents']
+                        st.session_state['agents'] = move_element(lst, i, 'left')
+                        st.rerun()
 
-            # Draw the personas
-            draw_personas(st.session_state.generated_personas)
+                with col4:
+                    if st.button("⬇️", key=f'down_{i}'):
+                        lst = st.session_state['agents']
+                        st.session_state['agents'] = move_element(lst, i, 'right')
+                        st.rerun()
 
-        if cfg['ux_params']['show_persona_desc'] and 'generated_personas' in st.session_state:
-            picked_personas = st.multiselect(
-                'Pick personas to include in debate (in order):',
-                [persona['name'] for persona in st.session_state.generated_personas],
-            )
-            if 'picked_personas' not in st.session_state:
-                st.session_state.picked_personas = []
-            for persona in picked_personas:
-                for tmp_persona in st.session_state.generated_personas:
-                    if tmp_persona['name'] == persona:
-                        st.session_state.picked_personas.append(tmp_persona)
-                        break
+                with col5:
+                    if st.button("🗑️", key=f'remove_{i}'):
+                        if agent in st.session_state['participating_agents']:
+                            st.session_state['participating_agents'].remove(agent)
+                        if agent in st.session_state['agents']:
+                            st.session_state['agents'].remove(agent)
+                        st.rerun()
 
-        if 'picked_personas' in st.session_state and len(st.session_state.picked_personas) > 2:
-            col1, col2 = st.columns(2)
-            with col1:
-                start = st.button('Start debate')
-            with col2:
-                stop = st.button('Stop debate')
+        col1, col2 = st.columns([0.5, 0.5], gap='small')
 
-            if stop:
-                st.stop()
+        with col1:
 
-            if start and 'picked_personas' in st.session_state:
-                with st.spinner('Debate in progress...'):
-                    with debate_tab:
-                        llm.simulate_debate(topic, st.session_state.picked_personas, cfg)
+            if st.button("Add agent"):
+                st.session_state['agents'].append(llm.Agent("", ""))
+                st.rerun()
+
+        with col2:
+            if st.button("Overwrite with AI generated agents"):
+                st.session_state.agents = llm.generate_personas(topic, len(st.session_state['agents']), cfg)
+                st.rerun()
+        st.divider()
+
+        st.session_state['current_debate_round'] = 0
+        next_round_button = st.button("Start Next Round Debate")
+    if next_round_button:
+        if len(st.session_state['participating_agents']) == 0:
+            st.error("Error: No agents selected!")
+        elif len(st.session_state['participating_agents']) == 1:
+            st.error("Error: Please select more than 1 agent!")
+        else:
+            for agent in st.session_state['participating_agents']:
+                if len(agent.title) == 0:
+                    st.warning(f"Warning: {agent.title} does not have a title!")
+                if len(agent.desc) == 0:
+                    st.warning(f"Warning: {agent.title} does not have a description!")
+            st.success("Starting debate!")
+
+            rounds = [f"Round {i}" for i in range(cfg['debate_params']['num_debate_rounds'])]
+            round_tabs = st.tabs(rounds)
+            with round_tabs[st.session_state['current_debate_round']]:
+                st.session_state['debate_history'] = llm.debate_round(topic, st.session_state['participating_agents'], cfg)
+            st.session_state['current_debate_round'] = st.session_state['current_debate_round'] + 1
+
+if __name__ == '__main__':
+    main()
