@@ -1,6 +1,5 @@
 import streamlit as st
 import yaml
-from streamlit_option_menu import option_menu
 
 import llm
 
