@@ -11,7 +11,7 @@ from collections import namedtuple
 
 
 SUPPORTED_MODELS = ['gemini-pro', 'gpt-3.5-turbo', 'gpt-4']
-openai.api_key = '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'  # os.environ.get('OPENAI_API_KEY')
+openai.api_key = os.environ.get('OPENAI_API_KEY')
 google_genai.configure(api_key=os.environ.get('GOOGLE_API_KEY'))
 
 
