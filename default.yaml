@@ -10,29 +10,54 @@ prompts:
     "emoji": <Single emoji representation of the perspective the persona represents>}}.
     Ensure that the output is formatted as a valid JSON.
     Please generate exactly [NUM_PERSONAS] personas.
+  persona_addition: >
+    Given the topic '[TOPIC]',
+    we are creating a roundtable debate of different personas to show key perspectives
+    on the issue. Currently, we have personas as follows: [CURRENT_PERSONAS]
+    Please output exactly one additional persona. Your output should have the following JSON structure:
+    {"title": <title of the Persona>,
+    "description": <Brief Description of the Persona>,
+    "emoji": <Single emoji representation of the perspective the persona represents>}.
+    Ensure that the output is formatted as a valid JSON.
   debate_start: >
     You are in an roundtable debate on the topic [TOPIC].
     You are [NAME], who is [DESC]. 
     Please start the debate by concisely presenting your
-    argument for your stance on the topic. [LIMITER] Do not reveal your name in your response!
+    argument for your stance on the topic. [LIMITER]
   debate: >
     You are in a continuing roundtable debate on the topic [TOPIC].
     You are [NAME], who is [DESC]. 
     Here is the transcript of the debate so far\: [HISTORY]
     Please continue to debate the others, concisely supporting your stance on
-    the topic. [LIMITER] Do not reveal your name in your response!
+    the topic. [LIMITER]
   response_length: >
-    Please limit your response to [RESPONSE_LENGTH].
+    Please limit your response to [RESPONSE_LENGTH]. You may use bullet points in parts of your response for readability. Use markdown format.
+  topics:
+    - "Is cell phone radiation safe?"
+    - "Should animals be used for scientific or commercial testing?"
+    - "Should humans colonize space?"
+    - "Should people become vegetarian?"
+    - "Is vaping with E-cigarettes safe?"
+    - "Should abortion be legal?"
+    - "Should the Federal minimum wage be increased?"
+    - "Should the Federal corporate income tax rate be raised?"
+    - "Should the United States implement a universal basic income?"
+    - "Should TikTok be banned in school?"
+    - "Do violent video games contribute to youth violence?"
+    - "Are the Olympic games an overall benefit for their host countries and cities?"
+    - "Do standardized tests improve education in America?"
+    - "Should K-12 students dissect animals in science classrooms?"
+    - "Are single-gender schools better for students?"
   
 
 debate_params:
   transcript_word_limit: 2500
   num_debate_rounds: 5
   num_personas: 5
-  limit_response_length: false
+  limit_response_length: true
 
   # string indicating to the LLM how long the response should be.
-  response_length: '5 sentences'
+  response_length: '200 words'
 
   # enable_continuous_mode:
   # Whether we allow personas to reply to only the previous round's responses,
@@ -58,8 +83,9 @@ debate_params:
 
 llm_params:
   model_name: 'gpt-4'
-  temperature: 0.7
+  temperature: 0.9
 
 
 ux_params:
   show_persona_desc: true
+

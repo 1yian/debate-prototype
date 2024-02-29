@@ -11,7 +11,7 @@ from collections import namedtuple
 
 
 SUPPORTED_MODELS = ['gemini-pro', 'gpt-3.5-turbo', 'gpt-4']
-openai.api_key = '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'  # os.environ.get('OPENAI_API_KEY')
+openai.api_key = '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'  # os.environ.get('OPENAI_API_KEY')
 google_genai.configure(api_key=os.environ.get('GOOGLE_API_KEY'))
 
 
@@ -22,6 +22,9 @@ class Agent:
         self.emoji = emoji
 
         self._recently_expanded = False
+
+    def __str__(self):
+        return f"""{{"title": {{{self.title}}}, "description": {{{self.desc}}}, "emoji": {{{self.emoji}}}}}"""
 
 
 def call_openai(prompt, temperature=0.8, model_name='gpt-4'):
@@ -108,6 +111,22 @@ def generate_personas(topic, num_personas, cfg):
     return ret
 
 
+def add_persona(topic, current_personas, cfg):
+    prompt = cfg['prompts']['persona_addition']
+    prompt = prompt.replace("[TOPIC]", topic)
+    prompt = prompt.replace("[CURRENT_PERSONAS]", "{" + ", ".join(map(str, current_personas)) + "}")
+    response = call_llm(
+        prompt,
+        cfg['llm_params']['model_name'],
+        temperature=cfg['llm_params']['temperature']
+    )
+
+    response = "[" + response + "]"
+    print(response)
+    persona = extract_json_from_response(response)[0]
+    return Agent(persona['title'], persona['description'], persona['emoji'])
+
+
 def check_shorten(debate_history, shorten_after):
     from summarizer.sbert import SBertSummarizer
     model = SBertSummarizer('paraphrase-MiniLM-L6-v2')
@@ -125,16 +144,21 @@ def check_shorten(debate_history, shorten_after):
     return new_debate_history
 
 
-def debate_round(topic, agents, cfg, debate_history=[]):
+def debate_round(topic, agents, cfg, last_round_debate_history=[]):
+    debate_history = []
     shortened_prev_round_debate_history = ""
     cont_mode = cfg['debate_params']['enable_continuous_mode']
+    if not cont_mode and len(last_round_debate_history) > 0:
+        prev_round_debate_history = last_round_debate_history.copy()
+        shortened_prev_round_debate_history = check_shorten(prev_round_debate_history,
+                                                            cfg['debate_params']['transcript_word_limit'])
     for i, agent in enumerate(agents):
         if cont_mode:
             prompt = cfg['prompts']['debate_start'] if len(debate_history) == 0 else cfg['prompts']['debate']
             str_debate = str(check_shorten(debate_history, cfg['debate_params']['transcript_word_limit']))
             prompt = prompt.replace("[HISTORY]", str_debate)
         else:
-            if len(debate_history) == 0:
+            if len(last_round_debate_history) == 0:
                 prompt = cfg['prompts']['debate_start']
             else:
                 prompt = cfg['prompts']['debate']
@@ -152,18 +176,29 @@ def debate_round(topic, agents, cfg, debate_history=[]):
         response = call_llm(prompt, cfg['llm_params']['model_name'], temperature=cfg['llm_params']['temperature'])
         # Streamlit chat message
         display_name = agent.title
-        with st.chat_message(agent.emoji if len(agent.emoji) > 0 else agent.title):
-            st.markdown(f"""
-            **{display_name}:**
-            {response}
-            """)
+        display_icon = agent.emoji if len(agent.emoji) > 0 else agent.title
+        write_message(display_icon, display_name, response)
+        debate_history.append({"icon": display_icon, "persona": display_name, "argument": response})
 
-        debate_history.append({"persona": display_name, "argument": response})
-        if not cont_mode:
-            prev_round_debate_history = debate_history.copy()
-            shortened_prev_round_debate_history = check_shorten(prev_round_debate_history,
-                                                                cfg['debate_params']['transcript_word_limit'])
     return debate_history
+
+
+def write_message(icon, name, response):
+    def add_to_summary_positive():
+        st.session_state.summary_history_pos.append({'icon': icon, 'persona': name, 'argument': response})
+
+    def add_to_summary_negative():
+        st.session_state.summary_history_neg.append({'icon': icon, 'persona': name, 'argument': response})
+
+    col1, col2 = st.columns([10, 1], gap="small")
+    with col1:
+        with st.chat_message(icon):
+            st.markdown(f"**{name}:**\n{response}")
+    with col2:
+        if st.button("👍", key=f'upvote_{name}_{response}'):
+            add_to_summary_positive()
+        if st.button("👎", key=f'downvote_{name}_{response}'):
+            add_to_summary_negative()
 
 
 def simulate_debate(topic, personas, cfg):
