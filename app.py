@@ -8,7 +8,7 @@ DEFAULT_CFG_PATH = './default.yaml'
 
 def main():
     # Pre-Configuration
-    st.set_page_config(layout="wide")
+    st.set_page_config(page_title="Persona Debate", page_icon=None, layout="wide", initial_sidebar_state="expanded", menu_items={'About': "This interface is part of an ongoing research project at the University of Texas at Austin, exploring decision-support through balanced information presentation. The content provided is for informational purposes only and does not constitute advice. The University of Texas at Austin is not liable for any actions taken based on the information provided through this interface. Always exercise judgment and caution when making decisions."})
     # Some unfortunate CSS that's needed for alignment
     st.markdown("""
         <style>
@@ -58,11 +58,11 @@ def main():
     # Set the title based on whether the user has input something or not
     with title:
         if topic:
-            st.title(topic)
+            st.title(topic, help="This interface is part of an ongoing research project at the University of Texas at Austin, exploring decision-support through balanced information presentation. The content provided is for informational purposes only and does not constitute advice. The University of Texas at Austin is not liable for any actions taken based on the information provided through this interface. Always exercise judgment and caution when making decisions.")
             if not_preselected:
                 del topic_inp
         else:
-            st.title("Choose a topic to uncover balanced insights and inform your understanding.", help="Select from a range of topics to engage with structured debates that present various viewpoints, fostering a comprehensive and unbiased understanding.")
+            st.title("Choose a topic to uncover balanced insights and inform your understanding.", help="This interface is part of an ongoing research project at the University of Texas at Austin, exploring decision-support through balanced information presentation. The content provided is for informational purposes only and does not constitute advice. The University of Texas at Austin is not liable for any actions taken based on the information provided through this interface. Always exercise judgment and caution when making decisions.")
             return
     num_personas_start = cfg['debate_params']['num_personas']
 
