@@ -20,7 +20,7 @@ class Agent:
         self.title = title
         self.desc = desc
         self.emoji = emoji
-
+        self.color = None
         self._recently_expanded = False
 
     def __str__(self):
@@ -177,28 +177,32 @@ def debate_round(topic, agents, cfg, last_round_debate_history=[]):
         # Streamlit chat message
         display_name = agent.title
         display_icon = agent.emoji if len(agent.emoji) > 0 else agent.title
-        write_message(display_icon, display_name, response)
-        debate_history.append({"icon": display_icon, "persona": display_name, "argument": response})
+        write_message(display_icon, display_name, response, agent.color)
+        debate_history.append({"icon": display_icon, "persona": display_name, "argument": response, "color": agent.color})
 
     return debate_history
 
 
-def write_message(icon, name, response):
+def write_message(icon, name, response, color):
     def add_to_summary_positive():
-        st.session_state.summary_history_pos.append({'icon': icon, 'persona': name, 'argument': response})
+        st.session_state.summary_history_pos.append({'icon': icon, 'persona': name, 'argument': response, 'color': color})
 
     def add_to_summary_negative():
-        st.session_state.summary_history_neg.append({'icon': icon, 'persona': name, 'argument': response})
+        st.session_state.summary_history_neg.append({'icon': icon, 'persona': name, 'argument': response, 'color': color})
 
     col1, col2 = st.columns([10, 1], gap="small")
     with col1:
         with st.chat_message(icon):
-            st.markdown(f"**{name}:**\n{response}")
+            msg = f"**:{color}[{name}]:**\n{response}"
+            st.markdown(msg)
     with col2:
-        if st.button("👍", key=f'upvote_{name}_{response}'):
-            add_to_summary_positive()
-        if st.button("👎", key=f'downvote_{name}_{response}'):
-            add_to_summary_negative()
+        up, down = st.columns([1, 1], gap='small')
+        with up:
+            if st.button("👍", key=f'upvote_{name}_{response}'):
+                add_to_summary_positive()
+        with down:
+            if st.button("👎", key=f'downvote_{name}_{response}'):
+                add_to_summary_negative()
 
 
 def simulate_debate(topic, personas, cfg):

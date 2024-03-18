@@ -6,7 +6,7 @@ prompts:
     personas as a list of JSON objects. Each JSON object
     should have the following structure:
     {{"title": <title of the Persona>,
-    "description": <Brief Description of the Persona>,
+    "description": <Brief Description of the Persona, only describing their background (rather than their stance)>,
     "emoji": <Single emoji representation of the perspective the persona represents>}}.
     Ensure that the output is formatted as a valid JSON.
     Please generate exactly [NUM_PERSONAS] personas.
@@ -16,17 +16,17 @@ prompts:
     on the issue. Currently, we have personas as follows: [CURRENT_PERSONAS]
     Please output exactly one additional persona. Your output should have the following JSON structure:
     {"title": <title of the Persona>,
-    "description": <Brief Description of the Persona>,
+    "description": <Brief Description of the Persona, only describing their background (rather than their stance)>,
     "emoji": <Single emoji representation of the perspective the persona represents>}.
     Ensure that the output is formatted as a valid JSON.
   debate_start: >
     You are in an roundtable debate on the topic [TOPIC].
-    You are [NAME], who is [DESC]. 
+    You are [NAME], who is [DESC].
     Please start the debate by concisely presenting your
     argument for your stance on the topic. [LIMITER]
   debate: >
     You are in a continuing roundtable debate on the topic [TOPIC].
-    You are [NAME], who is [DESC]. 
+    You are [NAME], who is [DESC].
     Here is the transcript of the debate so far\: [HISTORY]
     Please continue to debate the others, concisely supporting your stance on
     the topic. [LIMITER]
@@ -48,7 +48,7 @@ prompts:
     - "Do standardized tests improve education in America?"
     - "Should K-12 students dissect animals in science classrooms?"
     - "Are single-gender schools better for students?"
-  
+
 
 debate_params:
   transcript_word_limit: 2500
@@ -88,4 +88,3 @@ llm_params:
 
 ux_params:
   show_persona_desc: true
-
