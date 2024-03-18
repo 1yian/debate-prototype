@@ -173,7 +173,7 @@ def main():
                     st.warning(f"Warning: {agent.title} does not have a description!")
             if next_round_button:
                 st.session_state['current_debate_round'] = st.session_state['current_debate_round'] + 1
-            with st.spinner(f"Debating on round {st.session_state.current_debate_round + 1}..."):
+            with st.spinner(f"Currently debating for Round {st.session_state.current_debate_round + 1}"):
                 rounds = [f"Round {i + 1}" for i in range(st.session_state['current_debate_round'] + 1)] + ['Summary']
                 print(rounds)
                 round_tabs = st.tabs(rounds)
@@ -181,12 +181,7 @@ def main():
                     with round_tabs[i]:
                         for chat_msg in st.session_state.debate_history[i]:
                             llm.write_message(chat_msg['icon'], chat_msg['persona'], chat_msg['argument'], chat_msg['color'])
-                if next_round_button:
-                    with round_tabs[st.session_state['current_debate_round']]:
-                        sorted_participating_agents = sorted(st.session_state['participating_agents'],
-                                                             key=lambda obj: st.session_state['agents'].index(obj))
-                        last_round_history = st.session_state['debate_history'].get(st.session_state['current_debate_round'] - 1, [])
-                        st.session_state['debate_history'][st.session_state['current_debate_round']] = llm.debate_round(topic, sorted_participating_agents, cfg, last_round_history)
+
 
                 with round_tabs[-1]:
                     pos_col, neg_col = st.columns([1, 1])
@@ -222,6 +217,14 @@ def main():
                                     if chat_msg in st.session_state.summary_history_neg:
                                         st.session_state.summary_history_neg = [d for d in st.session_state.summary_history_neg if d != chat_msg]
                                     st.rerun()
+
+                if next_round_button:
+                    with round_tabs[st.session_state['current_debate_round']]:
+                        st.empty()
+                        sorted_participating_agents = sorted(st.session_state['participating_agents'],
+                                                             key=lambda obj: st.session_state['agents'].index(obj))
+                        last_round_history = st.session_state['debate_history'].get(st.session_state['current_debate_round'] - 1, [])
+                        st.session_state['debate_history'][st.session_state['current_debate_round']] = llm.debate_round(topic, sorted_participating_agents, cfg, last_round_history)
 
 
 def remove_duplicates_by_repr(dicts):
