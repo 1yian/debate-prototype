@@ -32,7 +32,7 @@ def main():
     if 'topic_id' in st.query_params:
         topic_id = int(st.query_params['topic_id'])
         topic = topic_options[topic_id]
-    if 'topic' in st.query_params:
+    elif 'topic' in st.query_params:
         topic = st.query_params['topic']
     else:
         not_preselected = True
