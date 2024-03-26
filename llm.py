@@ -198,13 +198,24 @@ def debate_round(topic, agents, cfg, last_round_debate_history=[], current_debat
     return debate_history
 
 
+def instance_in_list(instance, lst):
+    return any([j['argument'] == instance['argument'] and j['persona'] == instance['persona'] for j in lst])
+
+def remove_from_list(instance, lst):
+    i = len(lst) - 1
+    while i >= 0:
+        if lst[i]['argument'] == instance['argument'] and lst[i]['persona'] == instance['persona']:
+            del lst[i]
+        i -= 1
+
 def write_message(instance_dict):
     icon, name, response, color, usr_rating = instance_dict['icon'], instance_dict['persona'], instance_dict['argument'], instance_dict['color'], instance_dict['usr_rating']
+
+
     def add_to_summary_positive():
-        summary_instance_dict = {'icon': icon, 'persona': name, 'argument': response, 'color': color}
         # Add or update the instance in summary_history_pos
-        if instance_dict not in st.session_state.summary_history_pos:
-            st.session_state.summary_history_pos.append(summary_instance_dict)
+        if not instance_in_list(instance_dict, st.session_state.summary_history_pos):
+            st.session_state.summary_history_pos.append(instance_dict)
 
         # Set usr_rating to 1 or toggle to 0 if already 1
         print(instance_dict.get('usr_rating'))
@@ -213,18 +224,15 @@ def write_message(instance_dict):
         else:
             instance_dict['usr_rating'] = 0
             # Remove from summary_history_pos if present
-            while summary_instance_dict in st.session_state.summary_history_pos:
-                st.session_state.summary_history_pos.remove(summary_instance_dict)
+            remove_from_list(instance_dict, st.session_state.summary_history_pos)
 
-        while summary_instance_dict in st.session_state.summary_history_neg:
-            st.session_state.summary_history_neg.remove(summary_instance_dict)
+        remove_from_list(instance_dict, st.session_state.summary_history_neg)
 
     def add_to_summary_negative():
-        summary_instance_dict = {'icon': icon, 'persona': name, 'argument': response, 'color': color}
 
         # Add or update the instance in summary_history_neg
-        if instance_dict not in st.session_state.summary_history_neg:
-            st.session_state.summary_history_neg.append(summary_instance_dict)
+        if not instance_in_list(instance_dict, st.session_state.summary_history_neg):
+            st.session_state.summary_history_neg.append(instance_dict)
 
         # Set usr_rating to -1 or toggle to 0 if already -1
         print(instance_dict.get('usr_rating'))
@@ -232,12 +240,10 @@ def write_message(instance_dict):
             instance_dict['usr_rating'] = -1
         else:
             instance_dict['usr_rating'] = 0
-            while summary_instance_dict in st.session_state.summary_history_neg:
-                st.session_state.summary_history_neg.remove(summary_instance_dict)
+            # Remove from summary_history_pos if present
+            remove_from_list(instance_dict, st.session_state.summary_history_neg)
 
-        # Remove from summary_history_pos if present
-        while summary_instance_dict in st.session_state.summary_history_pos:
-            st.session_state.summary_history_pos.remove(summary_instance_dict)
+        remove_from_list(instance_dict, st.session_state.summary_history_pos)
 
     col3, col1, col2 = st.columns([0.1 ,10, 1], gap="small")
     with col1:

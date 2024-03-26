@@ -83,7 +83,7 @@ debate_params:
 
 llm_params:
   model_name: 'gpt-4'
-  temperature: 0.7
+  temperature: 0.9
 
 
 ux_params:

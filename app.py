@@ -184,7 +184,8 @@ def main():
                     with pos_col:
                         st.header("👍 Agree")
                         st.divider()
-                        for chat_msg in remove_duplicates_by_repr(st.session_state.summary_history_pos):
+                        st.session_state.summary_history_pos = remove_duplicates_by_repr(st.session_state.summary_history_pos)
+                        for chat_msg in st.session_state.summary_history_pos:
                             col1, col2 = st.columns([10, 1], gap="small")
                             with col1:
                                 with st.chat_message(chat_msg['icon']):
@@ -195,12 +196,14 @@ def main():
                                     st.markdown(msg)
                             with col2:
                                 if st.button("🗑️", key=f"remove_{chat_msg['persona']}_{chat_msg['argument']}"):
-                                    if chat_msg in st.session_state.summary_history_pos:
-                                        st.session_state.summary_history_pos = [d for d in st.session_state.summary_history_pos if d != chat_msg]
+                                    chat_msg['usr_rating'] = 0
+                                    # Remove from summary_history_pos if present
+                                    llm.remove_from_list(chat_msg, st.session_state.summary_history_pos)
                                     st.rerun()
                     with neg_col:
                         st.header("👎 Disagree")
                         st.divider()
+                        st.session_state.summary_history_neg = remove_duplicates_by_repr(st.session_state.summary_history_neg)
                         for chat_msg in remove_duplicates_by_repr(st.session_state.summary_history_neg):
                             col1, col2 = st.columns([10, 1], gap="small")
                             with col1:
@@ -209,9 +212,10 @@ def main():
                                     msg = f"**:{color}[{chat_msg['persona']}]:**\n{chat_msg['argument']}"
                                     st.markdown(msg)
                             with col2:
-                                if st.button("🗑️", key=f"remove_{chat_msg['persona']}_{chat_msg['argument']}_{uuid.uuid4()}"):
-                                    if chat_msg in st.session_state.summary_history_neg:
-                                        st.session_state.summary_history_neg = [d for d in st.session_state.summary_history_neg if d != chat_msg]
+                                if st.button("🗑️", key=f"remove_{chat_msg['persona']}_{chat_msg['argument']}"):
+                                    chat_msg['usr_rating'] = 0
+                                    # Remove from summary_history_pos if present
+                                    llm.remove_from_list(chat_msg, st.session_state.summary_history_neg)
                                     st.rerun()
 
                 if next_round_button or not st.session_state.completed_generation:
