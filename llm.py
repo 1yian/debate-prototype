@@ -6,9 +6,8 @@ import google.generativeai as google_genai
 import streamlit as st
 
 from collections import namedtuple
-
+import uuid
 # from rag import cohere_rag_pipeline
-
 
 SUPPORTED_MODELS = ['gemini-pro', 'gpt-3.5-turbo', 'gpt-4']
 openai.api_key = os.environ.get('OPENAI_API_KEY')
@@ -144,8 +143,8 @@ def check_shorten(debate_history, shorten_after):
     return new_debate_history
 
 
-def debate_round(topic, agents, cfg, last_round_debate_history=[]):
-    debate_history = []
+def debate_round(topic, agents, cfg, last_round_debate_history=[], current_debate_history=[]):
+    debate_history = current_debate_history
     shortened_prev_round_debate_history = ""
     cont_mode = cfg['debate_params']['enable_continuous_mode']
     if not cont_mode and len(last_round_debate_history) > 0:
@@ -173,24 +172,80 @@ def debate_round(topic, agents, cfg, last_round_debate_history=[]):
         else:
             prompt = prompt.replace("[LIMITER]", "")
 
-        response = call_llm(prompt, cfg['llm_params']['model_name'], temperature=cfg['llm_params']['temperature'])
-        # Streamlit chat message
-        display_name = agent.title
-        display_icon = agent.emoji if len(agent.emoji) > 0 else agent.title
-        write_message(display_icon, display_name, response, agent.color)
-        debate_history.append({"icon": display_icon, "persona": display_name, "argument": response, "color": agent.color})
+        print(f"We are now on agent {i} {agent.title}")
+        found = False
+        for instance in current_debate_history:
+            print(f"Looking for {agent.title}, looking at {instance['persona']}")
+            if instance['persona'].lower() == agent.title.lower():
+                found = True
+                response = instance['argument']
+                break
 
+        if found:
+            print(f"I have found a match for {agent.title}")
+        else:
+            print(f"I have not found a match for {agent.title}")
+        if not found:
+            response = call_llm(prompt, cfg['llm_params']['model_name'], temperature=cfg['llm_params']['temperature'])
+            # Streamlit chat message
+            display_name = agent.title
+            display_icon = agent.emoji if len(agent.emoji) > 0 else agent.title
+            instance = {"icon": display_icon, "persona": display_name, "argument": response, "color": agent.color, 'usr_rating': 0}
+            if agent.title not in [instance['persona'] for instance in current_debate_history]:
+                debate_history.append(instance)
+                print(f"Adding a response from {display_name}")
+                write_message(instance)
     return debate_history
 
 
-def write_message(icon, name, response, color):
+def instance_in_list(instance, lst):
+    return any([j['argument'] == instance['argument'] and j['persona'] == instance['persona'] for j in lst])
+
+def remove_from_list(instance, lst):
+    i = len(lst) - 1
+    while i >= 0:
+        if lst[i]['argument'] == instance['argument'] and lst[i]['persona'] == instance['persona']:
+            del lst[i]
+        i -= 1
+
+def write_message(instance_dict):
+    icon, name, response, color, usr_rating = instance_dict['icon'], instance_dict['persona'], instance_dict['argument'], instance_dict['color'], instance_dict['usr_rating']
+
+
     def add_to_summary_positive():
-        st.session_state.summary_history_pos.append({'icon': icon, 'persona': name, 'argument': response, 'color': color})
+        # Add or update the instance in summary_history_pos
+        if not instance_in_list(instance_dict, st.session_state.summary_history_pos):
+            st.session_state.summary_history_pos.append(instance_dict)
+
+        # Set usr_rating to 1 or toggle to 0 if already 1
+        print(instance_dict.get('usr_rating'))
+        if instance_dict.get('usr_rating') != 1:
+            instance_dict['usr_rating'] = 1
+        else:
+            instance_dict['usr_rating'] = 0
+            # Remove from summary_history_pos if present
+            remove_from_list(instance_dict, st.session_state.summary_history_pos)
+
+        remove_from_list(instance_dict, st.session_state.summary_history_neg)
 
     def add_to_summary_negative():
-        st.session_state.summary_history_neg.append({'icon': icon, 'persona': name, 'argument': response, 'color': color})
 
-    col1, col2 = st.columns([10, 1], gap="small")
+        # Add or update the instance in summary_history_neg
+        if not instance_in_list(instance_dict, st.session_state.summary_history_neg):
+            st.session_state.summary_history_neg.append(instance_dict)
+
+        # Set usr_rating to -1 or toggle to 0 if already -1
+        print(instance_dict.get('usr_rating'))
+        if instance_dict.get('usr_rating') != -1:
+            instance_dict['usr_rating'] = -1
+        else:
+            instance_dict['usr_rating'] = 0
+            # Remove from summary_history_pos if present
+            remove_from_list(instance_dict, st.session_state.summary_history_neg)
+
+        remove_from_list(instance_dict, st.session_state.summary_history_pos)
+
+    col3, col1, col2 = st.columns([0.1 ,10, 1], gap="small")
     with col1:
         with st.chat_message(icon):
             msg = f"**:{color}[{name}]:**\n{response}"
@@ -198,54 +253,16 @@ def write_message(icon, name, response, color):
     with col2:
         up, down = st.columns([1, 1], gap='small')
         with up:
-            if st.button("👍", key=f'upvote_{name}_{response}'):
-                add_to_summary_positive()
+            # Generate a unique key for the button
+            unique_key_up = f'upvote_{name}_{response}_{uuid.uuid4()}'
+            st.button("👍", key=unique_key_up, on_click=add_to_summary_positive)
+
         with down:
-            if st.button("👎", key=f'downvote_{name}_{response}'):
-                add_to_summary_negative()
-
-
-def simulate_debate(topic, personas, cfg):
-    rounds = cfg['debate_params']['num_debate_rounds']
-    cont_mode = cfg['debate_params']['enable_continuous_mode']
-    debate_history = []
-    for i in range(int(rounds)):
-        for p_idx, persona in enumerate(personas):
-
-            if cont_mode:
-                prompt = cfg['prompts']['debate_start'] if len(debate_history) == 0 else cfg['prompts']['debate']
-                str_debate = str(check_shorten(debate_history, cfg['debate_params']['transcript_word_limit']))
-                prompt = prompt.replace("[HISTORY]", str_debate)
-            else:
-                if i == 0:
-                    prompt = cfg['prompts']['debate_start']
-                else:
-                    prompt = cfg['prompts']['debate']
-                    str_debate = str(shortened_prev_round_debate_history)
-                    prompt = prompt.replace("[HISTORY]", str_debate)
-
-            prompt = prompt.replace("[TOPIC]", topic).replace("[NAME]", persona['name']).replace("[DESC]",
-                                                                                                 persona['description'])
-
-            if cfg['debate_params']['limit_response_length']:
-                limiter = cfg['prompts']['response_length'].replace('[RESPONSE_LENGTH]',
-                                                                    cfg['debate_params']['response_length'])
-                prompt = prompt.replace("[LIMITER]", limiter)
-            else:
-                prompt = prompt.replace("[LIMITER]", "")
-
-            response = call_llm(prompt, cfg['llm_params']['model_name'], temperature=cfg['llm_params']['temperature'])
-
-            # Rewrite argument with RAG
-            response_mod = cohere_rag_pipeline(response)
-
-            # Streamlit chat message
-            display_name = persona['name'] if cfg['ux_params']['show_persona_desc'] else f"Persona {p_idx}"
-            with st.chat_message(str(p_idx)):
-                st.write(f"{display_name}:\n", response_mod)
-
-            debate_history.append({"persona": display_name, "argument": response_mod})
-        if not cont_mode:
-            prev_round_debate_history = debate_history.copy()
-            shortened_prev_round_debate_history = check_shorten(prev_round_debate_history,
-                                                                cfg['debate_params']['transcript_word_limit'])
+            # Generate a unique key for the button
+            unique_key_down = f'downvote_{name}_{response}_{uuid.uuid4()}'
+            st.button("👎", key=unique_key_down, on_click=add_to_summary_negative)
+    with col3:
+        if instance_dict['usr_rating'] == 1:
+            st.write("👍")
+        elif instance_dict['usr_rating'] == -1:
+            st.write("👎")
